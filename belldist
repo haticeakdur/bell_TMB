@@ -1,0 +1,88 @@
+#include <vector>
+#include <cmath>
+#include <Rcpp.h>
+using namespace Rcpp;
+
+// Function to compute Bell numbers
+double bell(int n) {
+  std::vector<double> bell_numbers(n + 1);
+  bell_numbers[0] = 1;
+  for (int i = 1; i <= n; ++i) {
+    bell_numbers[i] = 0;
+    for (int j = 0; j < i; ++j) {
+      bell_numbers[i] += bell_numbers[j] * std::pow(i - 1, j) / std::tgamma(j + 1);
+    }
+  }
+  return bell_numbers[n];
+}
+
+// [[Rcpp::export]]
+NumericVector dbell(IntegerVector x, double theta, bool log_prob = false) {
+  int n = x.size();
+  NumericVector result(n);
+  
+  for (int i = 0; i < n; ++i) {
+    double Bx = bell(x[i]);
+    double lf = x[i] * std::log(theta) - std::exp(theta) + 1 + std::log(Bx) - std::lgamma(x[i] + 1);
+    result[i] = log_prob ? lf : std::exp(lf);
+  }
+  
+  return result;
+}
+// [[Rcpp::export]]
+NumericVector pbell(IntegerVector q, double theta, bool lower_tail = true, bool log_p = false) {
+  int n = q.size();
+  NumericVector result(n);
+  
+  for (int i = 0; i < n; ++i) {
+    double prob = q[i] < 0 ? 0 : sum(dbell(seq(0, q[i]), theta, false));
+    
+    if (!lower_tail) {
+      prob = 1 - prob;
+    }
+    
+    result[i] = log_p ? std::log(prob) : prob;
+  }
+  
+  return result;
+}
+
+// [[Rcpp::export]]
+IntegerVector qbell(NumericVector p, double theta, bool log_p = false) {
+  int n = p.size();
+  IntegerVector result(n);
+  
+  for (int i = 0; i < n; ++i) {
+    double target_p = log_p ? std::exp(p[i]) : p[i];
+    double cumulative_p = 0;
+    int k = 0;
+    
+    while (cumulative_p <= target_p) {
+      cumulative_p = pbell(IntegerVector::create(k), theta, true, false)[0];
+      ++k;
+    }
+    
+    result[i] = k - 1;
+  }
+  
+  return result;
+}
+
+#include <RcppArmadillo.h>
+#include <extraDistr.h>
+
+// [[Rcpp::depends(RcppArmadillo, extraDistr)]]
+
+// [[Rcpp::export]]
+IntegerVector rbell(int n, double theta) {
+  double lambda = std::exp(theta) - 1;
+  IntegerVector result(n);
+  
+  for (int i = 0; i < n; ++i) {
+    int N = R::rpois(lambda);
+    NumericVector rtpois_values = extraDistr::rtpois(N, theta, 0, R_PosInf);
+    result[i] = sum(rtpois_values);
+  }
+  
+  return result;
+}
