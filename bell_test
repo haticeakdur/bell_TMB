@@ -1,0 +1,26 @@
+# Load Rcpp package
+library(Rcpp)
+
+# Load the functions from the C++ file
+sourceCpp("bell_functions.cpp")
+
+# Test the dbell function
+x <- 0:10
+theta <- 1.5
+print(dbell(x, theta))
+
+# Test the bell function (as bellNumbersWrapper is essentially bell)
+print(bell(5))
+
+# Install and load Rcpp
+install.packages("Rcpp")
+library(Rcpp)
+
+# Source the C++ file
+sourceCpp("lambert.cpp")
+
+# Test the lambertW function in R
+z <- 1.0
+result <- lambertW(z)
+print(result)
+
